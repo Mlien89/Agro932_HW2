@@ -1,0 +1,174 @@
+---
+title: "Agro932_HW2"
+author: "Mason Lien"
+date: "4/11/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=F}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Levering the Rodene et al., 2022 UAV dataset as we used in lab11 to test a hypothesis regarding the relationship between heritability and fitness (approximately equal to yield in an agriculture setting. In this case, canopy coverage on different dates can be considered as a proxy to reflect different levels of fitness):
+
+1. Use the Github repo from homoework1 to host your homework2. If you don’t have the access to your homework1 repo, it is acceptable to create a new repo to host homework2 only. However, the repo should be a light-weighted repo that is not supposed to be nested within some other repo. (10 pts)
+
+The github repository for this homework can be found at the following: https://github.com/Mlien89/Agro932_HW2
+
+2. According to the Rodene et al., 2022 paper, identify a number of dates as a proxy of different levels of fitness and clearly specify your hypothesis to test (i.e., early dates of canopy coverage are more related to fitness) and speculate a little bit why that should be the case with or without citations. (20 pts)
+
+My hypothesis is that canopy coverage can affect fitness in a positive manner, meaning genotypes that have a higher canopy coverage at early growth stages will perform better(higher yields). This produces greater leaf area for the plant to photosynthesize and produce more engery for plant growth and development. But it is germplasm dependent and some inbreds will perform better than other's due to the nature of how the germplasm performs in a given environment. 
+
+July6-august12 --> heritability can vary greater at this point due to genotypes and environment. fitness is affected greatly
+
+August14-30 --> heritability is on average highest, where oversaturation occurs due from the full canopy experienced in corn plots. canopy coverage values stay high and therefore heritability is on average high. fitness is affected during pollination and grain fill reproductive stages.
+
+August30+ --> heritability begins to drop due to plant maturity rates and senesence. nitrogen uptake begins to slow and completly stop at maturity. 
+
+
+```{r, message=FALSE}
+
+#load necessary packages and data from lab11
+
+library(tidyr)
+library(dplyr)
+library(broom)
+library(ggplot2)
+library(ggpmisc)
+
+#read in the ppj220030-su-0002-tables1.csv file from lab11
+
+df <- read.csv("C:/Users/u942451/OneDrive - University of Nebraska-Lincoln/school/PhD/2022-agro932-lab/data/ppj220030-sup-0002-tables1.csv")
+
+#view frequency of days and number of observations
+table(df$date)
+
+#add replication
+df$Rep <- "Rep2"
+df[df$Row < 3000,] $Rep <- "Rep1"
+
+#view first part of data frame
+head(df)
+```
+
+
+3. Following the basic steps to estimate genetic variances (VA for the inbred population) and clearly interpret the ANOVA table and variance components in terms of the covariances between relatives. Show results for one date as an example. (50 pts)
+
+
+the following linear equation applies to the produced ANOVAs for this assignment. 
+
+$p_{ijk} = \mu + g_i + t_i + g_i x t_i + r_k + e_{ijk}$,
+
+where $p_{ijk}$ is the phenotype value of the ith genotype evaluated in the jth treatment with the kth rep,
+$g_i$ is the effect of the ith genotype,
+$t_i$ is the effect of the jth treatment (or environment),
+$g_i x t_j$ is the interaction effect of the ith genotype with the jth treatment,
+$r_k$ is the effect of the kth rep,
+and $e_{ijk}$ is the residual error. The $e_{ijk}$ have expectation to zero
+
+
+
+the reference table below details the ANOVA for an inbred population. 
+
+
+| Source        |    df     |  Observed MS      |  E(MS) |
+| :------:      | :-------: | :--------------------:|:------: | 
+| Environment   | $e-1=1$       |   |  |   
+| Replications/E        | $r-1=1$    |   |  | 
+| Inbred lines       | $n-1=232$       | $MS_{progeny}=275$  | $V_e + rV_{G \times E} + reV_{progeny}$       | 
+| Inbreds x E   | $(n-1)(e-1)=224$   |  $MS_{PE}=31$ | $V_e + rV_{G \times E}$       | 
+| pooled error  | $(n-1)(r-1)e=419$   |  $MS_{error}=32$ | $V_e$       | 
+
+- Inbred lines: $V_{progeny} = V_A$
+  - $V_{progeny} = V_A = \frac{MS_{progeny} - MS_{PE}}{re} = \frac{275 -31}{2 \times 2} = 61$
+
+--
+
+
+let's calculate and summarize ANOVA's for all dates and store in a single data frame for later use.
+
+```{r}
+
+#create a dataframe with the summaries of all of the anovas for all of the dates for canopy coverage
+
+summaries <- df %>% group_by(date) %>% do(tidy(aov(Canopy_Coverage ~ Genotype + Treatment + Genotype:Treatment + Rep, data = .)))
+
+```
+
+Looking at the Aug12 ANOVA we can the observed MS and E(MS) produced for each source. from this table we can estimate heritability. heritability is influenced by allele frequencies, and differ from one population to another. The quantified difference depends on environments and number of measurements, which varies across traits. narrow-sense h^2 is a fundamental statistic used in predicting response to selection. observing the anova table below we can see that the main effects of genotype, treatment, and rep all have significance, but the interaction term does not prove significant for this given observation. the df shows the degrees of freedom for each variable, the sumsq is the sum of squares, or the variation between the group means created by the levels of the independent variables and the overall mean. The meansq shows the mean sum of squares, or the sum of squares divided by the degrees of freedom. the statistic or F-value is the test statisctic, and this is the mean square of the variable divided by the mean square of each parameter. The p.value is the p-value of F-stat, and shows how likely the F-value calculated from the F-test would have occurred if the null hypothesis of no difference was true. 
+
+
+```{r}
+
+#lets look at the anova for Aug12
+
+summaries[summaries$date == "Aug12",]
+
+```
+
+
+# $h^2$ for Canopy Coverage
+
+The $h^2$ on a plot-mean basis can be estimated as
+
+\begin{align*}
+h^2 & = \frac{V_{A}}{V_{A} + V_{\bar{Y}}} \\
+    & = \frac{V_{A}}{V_{A} + V_{G \times E}/e + V_{e}/(re)} \\
+    & = \frac{61}{61 + 31/4} = 0.89 \\
+\end{align*}
+
+
+let's calculate narrow-sense heritability for each day and store in a table for visualization
+
+```{r}
+
+#store unique dates to loop through and calcualte heritability
+dates <- as.character(unique(summaries$date))
+
+#create list to store dataframes
+h2_list <- list()
+
+#loop to calculate h^2
+for (i in dates){
+  tmp <- summaries[summaries$date == i,]
+  VA <- (tmp[1,5] - tmp[4,5])/(2*2)
+  VP <- (tmp[4,5])/((length(unique(df$Rep)))*length(unique(df$Treatment)))
+  h2 <- VA/(VA + (tmp[4,5])/((length(unique(df$Rep)))*length(unique(df$Treatment))))
+  h2_list[[i]] <- cbind(i, h2)
+}
+
+#combine into single data frame
+h2_df <- do.call("rbind", h2_list)
+names(h2_df) <- c("date", "heritability")
+
+#order by date
+order <- c("July6","Aug12","Aug14","Aug16","Aug20","Aug22","Aug23","Aug26","Aug30","Sept1","Sept3","Sept5")
+h2_df <- h2_df[match(order, h2_df$date),]
+
+#add column with ascending order to use for visualization
+h2_df <- h2_df %>% mutate(day_number = 1:n())
+
+```
+
+
+4. Visualize (for example, a barplot with the x-axis showing the dates and the y-axis showing the h2), interpret your results, and report them in a reproducible manner. (20 pts)
+
+We can now plot the heritability data for each date and see how the values change over time
+
+```{r}
+
+ggplot(h2_df, aes(x = day_number, y = heritability))+
+  geom_point() +
+  scale_x_continuous(breaks = seq(1,12, by = 1)) +
+  labs(title = "Canopy Coverage" ~h^2, x = "observation", y = "heritability (%)") +
+  geom_smooth(method = "lm", se = F) +
+  stat_poly_eq(formula = y ~ x, 
+                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                parse = TRUE)
+
+```
+
+
+The heritability of canopy coverage changes over time. As hypothesized, I thought the heritability would increase and stay high for August14-30 due to over-saturation and coverage reamining high for many time points. there seems to be a flucation that occurs throughout the time-points indicating that there could be additional factors that influence trait heritability, for example how the data was collected during the time of day, interval of collection, or outside sources of variation not being explained by the linear model. I am wondering if there was any spatial correction prior to analysis of any field variation that could be removed to improve heritability? Overall, the paper by Rodene and this exercise suggest that canopy coverage is useful in estimating fitness, where a number newly found loci contribute to fitness in regards to canopy coverage in inbreds and response to nitrogen uptake.
